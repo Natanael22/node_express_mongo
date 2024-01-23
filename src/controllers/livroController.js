@@ -1,5 +1,5 @@
 import NaoEncontrado from "../erros/NaoEncontrado.js";
-import  { livro }  from "../models/Index.js";
+import  { autor, livro }  from "../models/Index.js";
 
 class LivroController{
 
@@ -79,15 +79,41 @@ class LivroController{
     }
   }
 
-  static async buscarLivroEditora(req, res, next){
-    const editora = req.query.editora;
+  static async listarLivroPorFiltro(req, res, next){
+    
     try {
-      const livrosEditora = await livro.find({editora: editora});
+
+      const busca = await processaBusca(req.query);    
+      //populate - popula os dados do autor que ao inves de vir somente o id, vira o schema completo de autor
+      const livrosEditora = await livro.find(busca).populate("autor");
+
       res.status(200).json(livrosEditora);
     } catch (error) {
       next(error); 
     }
   }
+
+}
+
+async function processaBusca(parametros) {
+
+  //console.log(parametros);
+  const { editora, titulo, nomeAutor } = parametros;
+  const busca = {};
+
+  if(editora) busca.editora = editora;
+  if(titulo) busca.titulo = { $regex: titulo, $options: "i"};
+
+  if(nomeAutor){
+    //console.log("nomeAutor: "+nomeAutor);
+    const autorEncontrado = await autor.findOne({nome: { $regex: nomeAutor, $options: "i"}});
+    //console.log("autor: "+autorEncontrado);
+    const autorId = autorEncontrado._id;
+    //console.log("id: " + autorId);
+    busca.autor = autorId;
+
+  }
+  return busca;
 }
 
 export default LivroController;
