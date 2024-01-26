@@ -6,8 +6,10 @@ class LivroController{
   static async listarLivros(req, res, next){
     try {
       
-      const listaLivros = await livro.find({});
-      res.status(200).json(listaLivros);
+      const buscaLivro = livro.find();
+      req.resultado = buscaLivro;
+      next();
+
     } catch (error) {
       next(error);
     }
@@ -83,12 +85,25 @@ class LivroController{
     
     try {
 
-      const busca = await processaBusca(req.query);    
-      //populate - popula os dados do autor que ao inves de vir somente o id, vira o schema completo de autor
-      const livrosEditora = await livro.find(busca).populate("autor");
+      const busca = await processaBusca(req.query); 
+      //console.log("busca: "+busca);
+      if(busca !== null){
 
-      res.status(200).json(livrosEditora);
+        //populate - popula os dados do autor que ao inves de vir somente o id, vira o schema completo de autor
+        //const livrosEditora = await livro.find(busca).populate("autor");  
+        //res.status(200).json(livrosEditora);
+
+        const buscaFiltro = livro.find().populate("autor");
+        req.resultado = buscaFiltro;
+        next();
+
+      }else{
+        //console.log("res vazio");
+        res.status(200).send([]);
+      }
     } catch (error) {
+      //console.log("caiu no catch");
+      //console.log(error);
       next(error); 
     }
   }
@@ -99,18 +114,22 @@ async function processaBusca(parametros) {
 
   //console.log(parametros);
   const { editora, titulo, nomeAutor } = parametros;
-  const busca = {};
+  let busca = {};
 
   if(editora) busca.editora = editora;
   if(titulo) busca.titulo = { $regex: titulo, $options: "i"};
 
   if(nomeAutor){
-    //console.log("nomeAutor: "+nomeAutor);
+    
     const autorEncontrado = await autor.findOne({nome: { $regex: nomeAutor, $options: "i"}});
-    //console.log("autor: "+autorEncontrado);
-    const autorId = autorEncontrado._id;
-    //console.log("id: " + autorId);
-    busca.autor = autorId;
+
+    if(autorEncontrado !== null){
+
+      busca.autor = autorEncontrado._id;
+    }else{   
+      //console.log("autor nao encontrado");         
+      busca = null;
+    }
 
   }
   return busca;
